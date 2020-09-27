@@ -1,19 +1,18 @@
 (ns ifarafontov.transit-publisher
-  (:require 
-            [clojure.java.io :as io]
-            [cognitect.transit :as transit]
-            [clojure.set :as set]
-            [com.brunobonacci.mulog.buffer :as rb]
-            [com.brunobonacci.mulog.utils :as ut]
-            [com.brunobonacci.mulog.publisher :refer [PPublisher]])
+  (:require
+   [clojure.java.io :as io]
+   [cognitect.transit :as transit]
+   [clojure.set :as set]
+   [com.brunobonacci.mulog.buffer :as rb]
+   [com.brunobonacci.mulog.utils :as ut]
+   [com.brunobonacci.mulog.publisher :refer [PPublisher]]
+   [ifarafontov.NoopFlushOutputStream])
   (:import
-   [java.nio.file Files ]
-   [com.ifarafontov NoopFlushOutputStream]
+   [java.nio.file Files]
    [java.time.format DateTimeFormatter]
    [java.time LocalDateTime Instant ZoneId Duration]
    [com.brunobonacci.mulog.core Flake]
-   [java.io File])
-  )
+   [java.io File]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,7 +35,7 @@
     (or (when max-age-ms (too-old? created-at (Instant/now) max-age-ms))
         (when max-size-bs (too-big? (.length file) max-size-bs)))))
 
-(defn creation-time [file]
+(defn creation-time [^File file]
   (.toInstant (.creationTime
                (java.nio.file.Files/readAttributes
                 (.toPath file)

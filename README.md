@@ -4,6 +4,8 @@ FIXME: my new application.
 
 ## Installation
 
+clj -e "(compile 'ifarafontov.NoopFlushOutputStream)"
+
 Download from https://github.com/ifarafontov/transit-publisher.
 
 ## Usage

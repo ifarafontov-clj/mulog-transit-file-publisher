@@ -1,4 +1,4 @@
-{:paths ["src" "resources" "java"]
+{:paths ["src" "resources" "classes"]
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
         com.brunobonacci/mulog {:mvn/version "0.5.0"}
         com.cognitect/transit-clj {:mvn/version "1.0.324"}}

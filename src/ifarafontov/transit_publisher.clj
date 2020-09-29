@@ -8,11 +8,11 @@
    [com.brunobonacci.mulog.publisher :refer [PPublisher]]
    [ifarafontov.NoopFlushOutputStream])
   (:import
-   [java.nio.file Files]
+   [java.nio.file Files CopyOption]
    [java.time.format DateTimeFormatter]
    [java.time LocalDateTime Instant ZoneId Duration]
    [com.brunobonacci.mulog.core Flake]
-   [java.io File]))
+   [java.io File FileOutputStream]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,9 +30,9 @@
 (defn too-big? [size-bs max-size-bs]
   (> size-bs max-size-bs))
 
-(defn rotate? [^File file  ^Instant created-at rotate-opts]
+(defn rotate? [^File file ^Instant created-at ^Instant now rotate-opts]
   (let [[max-age-ms max-size-bs] rotate-opts]
-    (or (when max-age-ms (too-old? created-at (Instant/now) max-age-ms))
+    (or (when max-age-ms (too-old? created-at now  max-age-ms))
         (when max-size-bs (too-big? (.length file) max-size-bs)))))
 
 (defn creation-time [^File file]
@@ -69,8 +69,30 @@
   (reduce (fn [acc [unit v]] (+ acc (* (unit units-table) v)))
           0 (seq descriptor)))
 
+(defn make-output-stream [^File file]
+  (ifarafontov.NoopFlushOutputStream. (FileOutputStream. file true)))
+
+(defrecord FSW [^File file
+                ^ifarafontov.NoopFlushOutputStream stream
+                ^cognitect.transit.Writer writer])
+
+(defn file-stream-writer [file-name transit-format]
+  (let [log-file (io/file file-name)
+        stream (make-output-stream log-file)
+        writer (transit/writer stream transit-format)]
+    (FSW. log-file stream writer)))
+
+(defn rotate [^File file]
+  (let [path (.toPath file)
+        old-name (.getCanonicalPath file)]
+    (Files/move path (.resolveSibling path
+                                      (str (.getName file) "." (local-timestamp)))
+                (into-array CopyOption []))
+    (io/file old-name)))
 
 (defn -main
   "I don't do a whole lot ... yet."
   [& args]
-  (println "Hello, World!"))
+  (make-output-stream (io/file "/home/karhu/clojure/app.json")))
+
+

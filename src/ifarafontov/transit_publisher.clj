@@ -93,6 +93,5 @@
 (defn -main
   "I don't do a whole lot ... yet."
   [& args]
-  (make-output-stream (io/file "/home/karhu/clojure/app.json")))
 
 

@@ -2,9 +2,12 @@
   (:require [clojure.test :refer :all]
             [ifarafontov.transit-publisher :as tp]
             [cognitect.transit :as transit]
-            [ifarafontov.NoopFlushOutputStream])
+            [ifarafontov.NoopFlushOutputStream]
+            [clojure.java.io :as io])
   (:import [java.io ByteArrayOutputStream File]
-           [java.time Instant]))
+           [java.time Instant]
+           [java.nio.file Files]
+           [java.nio.file.attribute FileAttribute]))
 
 (deftest noop-flush-test
   (testing "A flush() call has no effect, realFlush() call flushes bytes to destination"
@@ -51,6 +54,30 @@
           f (comp boolean rotate?)]
       (is (every? false? (map f dont-rotate)))
       (is (every? true? (map f do-rotate))))))
+
+(deftest rotate-test
+  (testing "(rotate ..) renames current log file and creates a new one"
+    (let [path (.toFile (Files/createTempDirectory "tptest-" (into-array FileAttribute [])))
+          file (File. path "app.log.json")
+          _ (spit file "it's all good, man!")
+          new-file (tp/rotate file)
+          _ (spit new-file "More good news")
+          _  (.deleteOnExit path)
+          log-names (.list path)
+          files-list (.listFiles path)]
+
+      (is (= 2 (count log-names)))
+      (is (every? #(.startsWith % "app.log.json") log-names))
+      (is (= "More good news" (slurp (File. path "app.log.json"))))
+      (is (= "it's all good, man!" (slurp (first
+                                           (filter #(not (= (.getName %) "app.log.json"))
+                                                   files-list)))))
+
+      (map #(.deleteOnExit %) files-list))))
+
+
+
+
 
 
 

@@ -72,15 +72,16 @@
 (defn make-output-stream [^File file]
   (ifarafontov.NoopFlushOutputStream. (FileOutputStream. file true)))
 
-(defrecord FSW [^File file
-                ^ifarafontov.NoopFlushOutputStream stream
-                ^cognitect.transit.Writer writer])
+(defrecord FSWC [^File file
+                 ^ifarafontov.NoopFlushOutputStream stream
+                 ^cognitect.transit.Writer writer
+                 ^Instant created-at])
 
-(defn file-stream-writer [file-name transit-format]
+(defn file-stream-writer-created [file-name transit-format]
   (let [log-file (io/file file-name)
         stream (make-output-stream log-file)
         writer (transit/writer stream transit-format)]
-    (FSW. log-file stream writer)))
+    (FSWC. log-file stream writer (creation-time log-file))))
 
 (defn rotate [^File file]
   (let [path (.toPath file)
@@ -92,6 +93,7 @@
 
 (defn -main
   "I don't do a whole lot ... yet."
-  [& args])
+  [& args]
+  (file-stream-writer-created "new.json" :json))
 
 

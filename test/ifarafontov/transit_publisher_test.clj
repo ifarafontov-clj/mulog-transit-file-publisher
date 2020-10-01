@@ -55,6 +55,39 @@
       (is (every? false? (map f dont-rotate)))
       (is (every? true? (map f do-rotate))))))
 
+(deftest throwable-keys-test
+  (is (= #{} (tp/throwable-keys {:key "value" 1 2})))
+  (is (= #{:t "ex"} (tp/throwable-keys {:k "V"
+                                        :t (Exception. "Boom!")
+                                        "s" "String-key"
+                                        "ex" (Exception. "Bang!")}))))
+
+(deftest convert-throwables-test
+  (is (= {} (tp/convert-throwables {})))
+  (is (= {:key "value"} (tp/convert-throwables {:key "value"})))
+  (let [boom (Exception. "Boom!")
+        bang (Exception. "Bang!")]
+    (is (= {:key "value"
+            :t (Throwable->map boom)
+            "str-key" (Throwable->map bang)}
+           (tp/convert-throwables {:key "value"
+                                   :t  boom
+                                   "str-key" bang})))))
+
+(deftest transform-test
+  (testing "Transducer test"
+    (let [xf (tp/get-xf #(when-not (:dont-log (set (keys %))) %))
+          e (Exception. "Boom!")
+          res (into [] xf [[0 {:event :app-started :metric 42}]
+                           [1 {:dont-log true}]
+                           [2 {:event :ms-db :exception e}]
+                           [3 {:event :trace :dont-log true}]])]
+
+      (is (= [{:event :app-started, :metric 42}
+              {:event :ms-db :exception (Throwable->map e)}]
+             res)))))
+
+
 (deftest rotate-test
   (testing "(rotate ..) renames current log file and creates a new one"
     (let [path (.toFile (Files/createTempDirectory "tptest-" (into-array FileAttribute [])))

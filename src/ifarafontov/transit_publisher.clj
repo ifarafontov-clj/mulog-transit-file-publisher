@@ -77,11 +77,10 @@
                  ^cognitect.transit.Writer writer
                  ^Instant created-at])
 
-(defn file-stream-writer-created [file-name transit-format]
-  (let [log-file (io/file file-name)
-        stream (make-output-stream log-file)
+(defn file-stream-writer-created [file transit-format]
+  (let [stream (make-output-stream file)
         writer (transit/writer stream transit-format)]
-    (FSWC. log-file stream writer (creation-time log-file))))
+    (FSWC. file stream writer (creation-time file))))
 
 (defn rotate [^File file]
   (let [path (.toPath file)
@@ -90,6 +89,74 @@
                                       (str (.getName file) "." (local-timestamp)))
                 (into-array CopyOption []))
     (io/file old-name)))
+
+(defn throwable-keys [m]
+  (reduce (fn [acc [k v]]
+            (if (instance? Throwable v) (conj acc k) acc))
+          #{} m))
+
+(defn convert-throwables [m]
+  (let [ks (throwable-keys m)]
+    (reduce (fn [acc k] (update-in acc [k] Throwable->map))
+            m ks)))
+
+(defn get-xf [transform]
+  (comp
+   (map second)
+   (map transform)
+   (filter (complement nil?))
+   (map convert-throwables)))
+
+(comment
+  (deftype TransitRollingFilePublisher [atom-file-stream-writer-created buffer transform]
+    com.brunobonacci.mulog.publisher.PPublisher
+    (agent-buffer [_]
+      buffer)
+
+
+    (publish-delay [_]
+      1000)
+
+
+    (publish [_ buffer]
+
+
+      (let [[file stream writer created-at] @atom-file-stream-writer-created])
+
+    ;; items are pairs [offset <item>]
+
+
+      (doseq [item (transform (map second (rb/items buffer)))]
+        (.write filewriter ^String (str (ut/edn-str item) \newline)))
+      (.flush filewriter)
+      (rb/clear buffer))
+
+
+    java.io.Closeable
+    (close [_]
+      (.flush filewriter)
+      (.close filewriter))))
+
+(defn transit-rolling-file-publisher1
+  [{:keys [file rotate-age rotate-size transit-format transform]
+    :or {file "./app.log.json"
+         rotate-age nil
+         rotate-size nil
+         transit-format :json
+         transform identity}}]
+
+  {:pre [(-> (io/file file)
+             (.getParentFile)
+             (#(and (.isDirectory %) (.canWrite %))))]}
+
+  (let [rotate-opts (mapv (fn [[desc table]]
+                            (when desc (descriptor->value desc table)))
+                          [[rotate-age time-units] [rotate-size size-units]])
+        current-file (io/file file)
+        log-file (if (rotate? current-file (creation-time current-file)
+                              (Instant/now) rotate-opts)
+                   (rotate current-file) current-file)
+        fswc (atom (file-stream-writer-created file transit-format))]))
 
 (defn -main
   "I don't do a whole lot ... yet."

@@ -3,11 +3,13 @@
             [ifarafontov.transit-publisher :as tp]
             [cognitect.transit :as transit]
             [ifarafontov.NoopFlushOutputStream]
-            [clojure.java.io :as io])
-  (:import [java.io ByteArrayOutputStream File]
+            [clojure.java.io :as io]
+            [com.brunobonacci.mulog.flakes :as fl])
+  (:import [java.io ByteArrayOutputStream File ByteArrayInputStream]
            [java.time Instant]
            [java.nio.file Files]
-           [java.nio.file.attribute FileAttribute]))
+           [java.nio.file.attribute FileAttribute]
+           [com.brunobonacci.mulog.core Flake]))
 
 (deftest noop-flush-test
   (testing "A flush() call has no effect, realFlush() call flushes bytes to destination"
@@ -107,6 +109,16 @@
                                                    files-list)))))
 
       (map #(.deleteOnExit %) files-list))))
+
+(deftest flake-handlers-test
+  (let [dest (ByteArrayOutputStream. 2048)
+        w (transit/writer dest :json {:handlers {Flake tp/flake-write-handler}})
+        f (fl/flake)
+        _ (transit/write w f)
+        in (ByteArrayInputStream. (.toByteArray dest))
+        r (transit/reader in :json {:handlers {"flake" tp/flake-read-handler}})
+        res (transit/read r)]
+    (is (= f res))))
 
 
 

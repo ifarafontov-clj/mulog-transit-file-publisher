@@ -108,7 +108,7 @@
    (map convert-throwables)))
 
 (comment
-  (deftype TransitRollingFilePublisher [atom-file-stream-writer-created buffer transform]
+  (deftype TransitRollingFilePublisher [atom-fswc buffer xf]
     com.brunobonacci.mulog.publisher.PPublisher
     (agent-buffer [_]
       buffer)

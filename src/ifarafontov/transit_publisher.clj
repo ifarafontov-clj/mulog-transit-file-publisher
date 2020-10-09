@@ -5,8 +5,8 @@
    [clojure.set :as set]
    [com.brunobonacci.mulog.buffer :as rb]
    [com.brunobonacci.mulog.utils :as ut]
-   [com.brunobonacci.mulog.publisher :refer [PPublisher]]
-   [ifarafontov.NoopFlushOutputStream])
+   [ifarafontov.NoopFlushOutputStream]
+   [com.brunobonacci.mulog :as mu])
   (:import
    [java.nio.file Files CopyOption]
    [java.time.format DateTimeFormatter]
@@ -77,9 +77,12 @@
                  ^cognitect.transit.Writer writer
                  ^Instant created-at])
 
-(defn file-stream-writer-created [file transit-format]
+(defn file-stream-writer-created [^File file transit-format transit-handlers]
   (let [stream (make-output-stream file)
-        writer (transit/writer stream transit-format)]
+        writer (transit/writer stream
+                               transit-format
+                               {:handlers (merge {Flake flake-write-handler}
+                                                 transit-handlers)})]
     (FSWC. file stream writer (creation-time file))))
 
 (defn rotate [^File file]
@@ -107,60 +110,101 @@
    (filter (complement nil?))
    (map convert-throwables)))
 
-(comment
-  (deftype TransitRollingFilePublisher [atom-fswc buffer xf]
-    com.brunobonacci.mulog.publisher.PPublisher
-    (agent-buffer [_]
-      buffer)
 
 
-    (publish-delay [_]
-      1000)
+(deftype TransitRollingFilePublisher [buffer
+                                      fswc
+                                      xf
+                                      rotate-opts
+                                      transit-format
+                                      transit-handlers]
+  com.brunobonacci.mulog.publisher.PPublisher
+  (agent-buffer [_]
+    buffer)
 
 
-    (publish [_ buffer]
+  (publish-delay [_]
+    500)
 
 
-      (let [[file stream writer created-at] @atom-file-stream-writer-created])
+  (publish [_ buffer]
+    (let [{:keys [file
+                  ^ifarafontov.NoopFlushOutputStream stream
+                  writer
+                  created-at]} @fswc
+          items (into [] xf (rb/items buffer))]
+      (doseq [item items]
+        (transit/write writer item))
+      (.realFlush stream)
+      (when (rotate? file created-at (Instant/now) rotate-opts)
+        (reset! fswc (file-stream-writer-created (rotate file)
+                                                 transit-format
+                                                 transit-handlers)))
+      (rb/clear buffer)))
 
-    ;; items are pairs [offset <item>]
 
+  java.io.Closeable
+  (close [_]
+    (let [^ifarafontov.NoopFlushOutputStream stream (:stream @fswc)]
+      (.realFlush stream)
+      (.close stream))))
 
-      (doseq [item (transform (map second (rb/items buffer)))]
-        (.write filewriter ^String (str (ut/edn-str item) \newline)))
-      (.flush filewriter)
-      (rb/clear buffer))
-
-
-    java.io.Closeable
-    (close [_]
-      (.flush filewriter)
-      (.close filewriter))))
-
-(defn transit-rolling-file-publisher1
-  [{:keys [file rotate-age rotate-size transit-format transform]
-    :or {file "./app.log.json"
+(defn transit-rolling-file-publisher
+  [{:keys [file-name rotate-age rotate-size transit-format transit-handlers transform]
+    :or {file-name "./app.log.json"
          rotate-age nil
          rotate-size nil
          transit-format :json
+         transit-handlers nil
          transform identity}}]
 
-  {:pre [(-> (io/file file)
+  {:pre [(-> (io/file file-name)
              (.getParentFile)
-             (#(and (.isDirectory %) (.canWrite %))))]}
+             ((fn [^File f]
+                (and (.isDirectory f) (.canWrite f)))))]}
 
   (let [rotate-opts (mapv (fn [[desc table]]
                             (when desc (descriptor->value desc table)))
                           [[rotate-age time-units] [rotate-size size-units]])
-        current-file (io/file file)
-        log-file (if (rotate? current-file (creation-time current-file)
-                              (Instant/now) rotate-opts)
-                   (rotate current-file) current-file)
-        fswc (atom (file-stream-writer-created file transit-format))]))
+        current-file (io/file file-name)
+        log-file (if (and
+                      (.exists current-file)
+                      (rotate? current-file (creation-time current-file)
+                               (Instant/now) rotate-opts))
+                   (rotate current-file) current-file)]
+    (TransitRollingFilePublisher.
+     (rb/agent-buffer 10000)
+     (atom (file-stream-writer-created log-file transit-format transit-handlers))
+     (get-xf transform)
+     rotate-opts
+     transit-format
+     transit-handlers)))
 
 (defn -main
-  "I don't do a whole lot ... yet."
   [& args]
-  (file-stream-writer-created "new.json" :json))
+
+  
+  (mu/start-publisher!
+   {:type :custom
+    :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
+    :file-name "logz/app.log"
+    })
+  
+  
+  (let [e (Exception. "Boom!")]
+    (time 
+     (dotimes [_ 100000]
+       (mu/log :start :key 123 :exc e :time (Instant/now))
+       ))
+    )
+  
+  
+  
+  
+  
+  
+
+  
+  )
 
 

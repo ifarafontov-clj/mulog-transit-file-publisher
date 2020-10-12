@@ -81,8 +81,7 @@
   (let [stream (make-output-stream file)
         writer (transit/writer stream
                                transit-format
-                               {:handlers (merge {Flake flake-write-handler}
-                                                 transit-handlers)})]
+                               {:handlers transit-handlers})]
     (FSWC. file stream writer (creation-time file))))
 
 (defn rotate [^File file]
@@ -132,8 +131,9 @@
                   ^ifarafontov.NoopFlushOutputStream stream
                   writer
                   created-at]} @fswc
-          items (into [] xf (rb/items buffer))]
-      (doseq [item items]
+          items (into [] xf (rb/items buffer))
+          _ (println "!! " (count items))]
+      (doseq [item items]      
         (transit/write writer item))
       (.realFlush stream)
       (when (rotate? file created-at (Instant/now) rotate-opts)
@@ -178,33 +178,39 @@
      (get-xf transform)
      rotate-opts
      transit-format
-     transit-handlers)))
+     (merge {Flake flake-write-handler}
+            transit-handlers)
+     )))
 
 (defn -main
   [& args]
-
   
   (mu/start-publisher!
    {:type :custom
     :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
     :file-name "logz/app.log"
-    })
+    :rotate-size {:mb 10}})
+    
   
   
   (let [e (Exception. "Boom!")]
     (time 
-     (dotimes [_ 100000]
-       (mu/log :start :key 123 :exc e :time (Instant/now))
-       ))
-    )
+     (dotimes [n 10000000]
+       (mu/log :start
+               :key n
+               :e e
+               :t (str (Instant/now))))))
+       
+    
   
   
   
-  
+  (doseq [n [1 2 3]]
+    (println n)))
   
   
 
   
-  )
+  
 
 

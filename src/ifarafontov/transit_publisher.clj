@@ -12,7 +12,7 @@
    [java.time.format DateTimeFormatter]
    [java.time LocalDateTime Instant ZoneId Duration]
    [com.brunobonacci.mulog.core Flake]
-   [java.io File FileOutputStream]))
+   [java.io File FileOutputStream BufferedInputStream EOFException]))
 
 (set! *warn-on-reflection* true)
 
@@ -109,7 +109,27 @@
    (filter (complement nil?))
    (map convert-throwables)))
 
+(defn read-all-transit [{:keys [file-name transit-format transit-handlers]
+                         :or {file-name "./app.log.json"
+                              transit-format :json
+                              transit-handlers nil}}]
 
+  (with-open [^BufferedInputStream in (io/make-input-stream
+                                       (io/file file-name) {})]
+    (let [reader (transit/reader
+                  in
+                  transit-format
+                  {:handlers (merge {"flake" flake-read-handler} transit-handlers)})]
+      (loop [res []]
+        (if-let [entry (try
+                         (transit/read reader)
+                         ;;Both :json and :msgpack throw EOF
+                         (catch RuntimeException re
+                           (if (instance? EOFException (.getCause re))
+                             nil
+                             (throw re))))]
+          (recur (conj res entry))
+          res)))))
 
 (deftype TransitRollingFilePublisher [buffer
                                       fswc
@@ -133,7 +153,7 @@
                   created-at]} @fswc
           items (into [] xf (rb/items buffer))
           _ (println "!! " (count items))]
-      (doseq [item items]      
+      (doseq [item items]
         (transit/write writer item))
       (.realFlush stream)
       (when (rotate? file created-at (Instant/now) rotate-opts)
@@ -166,51 +186,60 @@
   (let [rotate-opts (mapv (fn [[desc table]]
                             (when desc (descriptor->value desc table)))
                           [[rotate-age time-units] [rotate-size size-units]])
+        transit-handlers (merge {Flake flake-write-handler}
+                                transit-handlers)
         current-file (io/file file-name)
         log-file (if (and
                       (.exists current-file)
                       (rotate? current-file (creation-time current-file)
                                (Instant/now) rotate-opts))
-                   (rotate current-file) current-file)]
+                   (rotate current-file) current-file)
+        _ (println (str "Rotate opts ARE" rotate-opts))]
     (TransitRollingFilePublisher.
      (rb/agent-buffer 10000)
      (atom (file-stream-writer-created log-file transit-format transit-handlers))
      (get-xf transform)
      rotate-opts
      transit-format
-     (merge {Flake flake-write-handler}
-            transit-handlers)
-     )))
+     transit-handlers)))
+
+(def stop (mu/start-publisher!
+           {:type :custom
+            :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
+            :file-name "logz/app.log"
+           ; :transit-format :msgpack
+           ; :rotate-size {:mb 10}
+            }))
 
 (defn -main
   [& args]
-  
-  (mu/start-publisher!
-   {:type :custom
-    :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
-    :file-name "logz/app.log"
-    :rotate-size {:mb 10}})
-    
-  
-  
-  (let [e (Exception. "Boom!")]
-    (time 
-     (dotimes [n 10000000]
+
+  (mu/start-publisher! {:type :console})
+
+  (mu/log :start
+          :key 1
+          :e :ev
+          :t (str (Instant/now)))
+
+  (stop)
+
+  (time 
+   (let [e (Exception. "Boom!")]
+     (dotimes [n 10000]
+       (Thread/sleep 1)
        (mu/log :start
                :key n
-               :e e
+               :ex e
                :t (str (Instant/now))))))
-       
-    
+(count 
+ (read-all-transit {:file-name "logz/app.log"
+                   ; :transit-format :msgpack
+                    }))
   
-  
-  
-  (doseq [n [1 2 3]]
-    (println n)))
-  
-  
+  )
 
-  
-  
+
+
+
 
 

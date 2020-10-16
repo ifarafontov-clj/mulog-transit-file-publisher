@@ -4,7 +4,6 @@
    [cognitect.transit :as transit]
    [clojure.set :as set]
    [com.brunobonacci.mulog.buffer :as rb]
-   [com.brunobonacci.mulog.utils :as ut]
    [ifarafontov.NoopFlushOutputStream]
    [com.brunobonacci.mulog :as mu])
   (:import
@@ -169,6 +168,21 @@
       (.realFlush stream)
       (.close stream))))
 
+(defn parse-created-at [file-name names]
+  (let [try-parse-long (fn [s] (try
+                                 (Long/parseLong s)
+                                 (catch NumberFormatException _ nil)))
+        suffix (str "_" file-name)
+        time-and-name (fn [^String log]
+                        (when (.endsWith log suffix)
+                          (when-let [ms (try-parse-long
+                                         (subs log 0 (.lastIndexOf log suffix)))]
+                            [(Instant/ofEpochMilli ms) log])))
+        logs (->> names
+                  (map time-and-name)
+                  (filterv (complement nil?)))]
+    logs))
+
 (defn transit-rolling-file-publisher
   [{:keys [file-name rotate-age rotate-size transit-format transit-handlers transform]
     :or {file-name "./app.log.json"
@@ -193,7 +207,8 @@
                       (.exists current-file)
                       (rotate? current-file (creation-time current-file)
                                (Instant/now) rotate-opts))
-                   (rotate current-file) current-file)
+                   (rotate current-file)
+                   current-file)
         _ (println (str "Rotate opts ARE" rotate-opts))]
     (TransitRollingFilePublisher.
      (rb/agent-buffer 10000)
@@ -203,16 +218,17 @@
      transit-format
      transit-handlers)))
 
-(def stop (mu/start-publisher!
-           {:type :custom
-            :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
-            :file-name "logz/app.log"
-           ; :transit-format :msgpack
-           ; :rotate-size {:mb 10}
-            }))
-
 (defn -main
   [& args]
+
+  (mu/start-publisher!
+   {:type :custom
+    :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
+    :file-name "logz/app.log"})
+           ; :transit-format :msgpack
+           ; :rotate-size {:mb 10}
+
+
 
   (mu/start-publisher! {:type :console})
 
@@ -221,21 +237,28 @@
           :e :ev
           :t (str (Instant/now)))
 
-  (stop)
 
-  (time 
-   (let [e (Exception. "Boom!")]
-     (dotimes [n 10000]
-       (Thread/sleep 1)
-       (mu/log :start
-               :key n
-               :ex e
-               :t (str (Instant/now))))))
-(count 
- (read-all-transit {:file-name "logz/app.log"
+
+;; 256MB
+  (future
+    (let [e (Exception. "Boom!")]
+      (dotimes [n 1000000]
+        (Thread/sleep 1)
+        (mu/log :start
+                :key n
+                :ex (str (* 10000000 1000000000))
+                :t (str (Instant/now))))))
+  (count
+   (read-all-transit {:file-name "logz/app.log"}))
                    ; :transit-format :msgpack
-                    }))
-  
+
+  (creation-time (io/file "logz/app.log"))
+
+  (.list
+   (.getParentFile (io/file "logz/app.log")))
+
+  (.getName (io/file "logz/app.log"))
+
   )
 
 

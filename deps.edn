@@ -13,4 +13,9 @@
                "-d" "test"]}
   :uberjar {:extra-deps {seancorfield/depstar {:mvn/version "1.1.104"}}
             :main-opts ["-m" "hf.depstar.uberjar" "transit-publisher.jar"
-                        "-C" "-m" "ifarafontov.transit-publisher"]}}}
+                        "-C" "-m" "ifarafontov.transit-publisher"]}
+  :nrepl-calva {:extra-deps {nrepl/nrepl {:mvn/version "0.6.0"}
+                             cider/cider-nrepl {:mvn/version "0.23.0"}
+                             clj-kondo {:mvn/version "2020.04.05"}}
+                :main-opts ["-m" "nrepl.cmdline"
+                            "--middleware" "[cider.nrepl/cider-middleware]"]}}}

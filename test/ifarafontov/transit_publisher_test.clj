@@ -120,9 +120,18 @@
         res (transit/read r)]
     (is (= f res))))
 
-
-
-
+(deftest parse-created-at-test
+  (let [now (Instant/ofEpochMilli (.toEpochMilli (Instant/now)))
+        then (Instant/ofEpochMilli (.toEpochMilli (.minusMillis now 60000)))
+        res (tp/parse-created-at "suffix"
+                                 ["gar_bage" "123_qwe" "123_suffix_suffix"
+                                  (str (.toEpochMilli now) "_suffix")
+                                  (str (.toEpochMilli then) "_suffix")])]
+    (is (= [[now (str (.toEpochMilli now) "_suffix")]
+            [then (str (.toEpochMilli then) "_suffix")]] res)
+        )
+    (is (empty? (tp/parse-created-at "suffix" [])))
+    ))
 
 
 

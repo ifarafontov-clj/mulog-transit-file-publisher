@@ -89,24 +89,24 @@
               {:event :ms-db :exception (Throwable->map e)}]
              res)))))
 
-
 (deftest rotate-test
   (testing "(rotate ..) renames current log file and creates a new one"
-    (let [path (.toFile (Files/createTempDirectory "tptest-" (into-array FileAttribute [])))
-          file (File. path "app.log.json")
+    (let [now (Instant/now)
+          suffix "app.log.json"
+          dir (.toFile (Files/createTempDirectory "tptest-" (into-array FileAttribute [])))
+          file (File. dir (str (.toEpochMilli now) "_" suffix))
           _ (spit file "it's all good, man!")
-          new-file (tp/rotate file)
+          new-file (tp/rotate file now suffix)
           _ (spit new-file "More good news")
-          _  (.deleteOnExit path)
-          log-names (.list path)
-          files-list (.listFiles path)]
+          _  (.deleteOnExit dir)
+          log-names (.list dir)
+          files-list (.listFiles dir)
+          expected-rotated-name (str suffix "." (tp/local-timestamp now))
+          expected-current-name (str (.toEpochMilli now) "_" suffix)]
 
       (is (= 2 (count log-names)))
-      (is (every? #(.startsWith % "app.log.json") log-names))
-      (is (= "More good news" (slurp (File. path "app.log.json"))))
-      (is (= "it's all good, man!" (slurp (first
-                                           (filter #(not (= (.getName %) "app.log.json"))
-                                                   files-list)))))
+      (is (= "More good news" (slurp (File. dir expected-current-name))))
+      (is (= "it's all good, man!" (slurp (File. dir expected-rotated-name))))
 
       (map #(.deleteOnExit %) files-list))))
 
@@ -125,13 +125,16 @@
         then (Instant/ofEpochMilli (.toEpochMilli (.minusMillis now 60000)))
         res (tp/parse-created-at "suffix"
                                  ["gar_bage" "123_qwe" "123_suffix_suffix"
-                                  (str (.toEpochMilli now) "_suffix")
-                                  (str (.toEpochMilli then) "_suffix")])]
-    (is (= [[now (str (.toEpochMilli now) "_suffix")]
-            [then (str (.toEpochMilli then) "_suffix")]] res)
-        )
-    (is (empty? (tp/parse-created-at "suffix" [])))
-    ))
+                                  (str (.toEpochMilli now) "_suffix")]
+                                 now)]
+    (is (=  [now (str (.toEpochMilli now) "_suffix")] res))
+    (is (= [now (str (.toEpochMilli now) "_suffix")]
+           (tp/parse-created-at "suffix" [] now)))
+    (is (thrown? AssertionError
+                 (tp/parse-created-at "suffix"
+                                      [(str (.toEpochMilli now) "_suffix")
+                                       (str (.toEpochMilli then) "_suffix")]
+                                      now)))))
 
 
 

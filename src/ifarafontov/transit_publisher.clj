@@ -5,7 +5,8 @@
    [clojure.set :as set]
    [com.brunobonacci.mulog.buffer :as rb]
    [ifarafontov.NoopFlushOutputStream]
-   [com.brunobonacci.mulog :as mu])
+   [com.brunobonacci.mulog :as mu]
+   [clojure.string :as str])
   (:import
    [java.nio.file Files CopyOption]
    [java.time.format DateTimeFormatter]
@@ -16,8 +17,8 @@
 (set! *warn-on-reflection* true)
 
 (def formatter (DateTimeFormatter/ofPattern "YYYYMMdd_hhmmss"))
-(defn local-timestamp []
-  (.format (LocalDateTime/ofInstant (Instant/now)
+(defn local-timestamp [now]
+  (.format (LocalDateTime/ofInstant now
                                     (ZoneId/systemDefault)) formatter))
 
 (def flake-write-handler (transit/write-handler "flake" #(str %)))
@@ -33,13 +34,6 @@
   (let [[max-age-ms max-size-bs] rotate-opts]
     (or (when max-age-ms (too-old? created-at now  max-age-ms))
         (when max-size-bs (too-big? (.length file) max-size-bs)))))
-
-(defn creation-time [^File file]
-  (.toInstant (.creationTime
-               (java.nio.file.Files/readAttributes
-                (.toPath file)
-                java.nio.file.attribute.BasicFileAttributes
-                (into-array java.nio.file.LinkOption [])))))
 
 (def time-units (let [seconds 1000
                       minutes (* 60 seconds)
@@ -76,20 +70,21 @@
                  ^cognitect.transit.Writer writer
                  ^Instant created-at])
 
-(defn file-stream-writer-created [^File file transit-format transit-handlers]
+(defn file-stream-writer-created [^File file
+                                  transit-format transit-handlers
+                                  created-at]
   (let [stream (make-output-stream file)
         writer (transit/writer stream
                                transit-format
                                {:handlers transit-handlers})]
-    (FSWC. file stream writer (creation-time file))))
+    (FSWC. file stream writer created-at)))
 
-(defn rotate [^File file]
-  (let [path (.toPath file)
-        old-name (.getCanonicalPath file)]
+(defn rotate [^File file now file-name]
+  (let [path (.toPath file)]
     (Files/move path (.resolveSibling path
-                                      (str (.getName file) "." (local-timestamp)))
+                                      (str file-name "." (local-timestamp now)))
                 (into-array CopyOption []))
-    (io/file old-name)))
+    (File. (.getParentFile file) (str (.toEpochMilli now) "_" file-name))))
 
 (defn throwable-keys [m]
   (reduce (fn [acc [k v]]
@@ -130,7 +125,8 @@
           (recur (conj res entry))
           res)))))
 
-(deftype TransitRollingFilePublisher [buffer
+(deftype TransitRollingFilePublisher [file-name
+                                      buffer
                                       fswc
                                       xf
                                       rotate-opts
@@ -151,12 +147,13 @@
                   writer
                   created-at]} @fswc
           items (into [] xf (rb/items buffer))
-          _ (println "!! " (count items))]
+          _ (println "!! " (count items))
+          now (Instant/now)]
       (doseq [item items]
         (transit/write writer item))
       (.realFlush stream)
-      (when (rotate? file created-at (Instant/now) rotate-opts)
-        (reset! fswc (file-stream-writer-created (rotate file)
+      (when (rotate? file created-at now rotate-opts)
+        (reset! fswc (file-stream-writer-created (rotate file now file-name)
                                                  transit-format
                                                  transit-handlers)))
       (rb/clear buffer)))
@@ -168,7 +165,7 @@
       (.realFlush stream)
       (.close stream))))
 
-(defn parse-created-at [file-name names]
+(defn parse-created-at [file-name names now]
   (let [try-parse-long (fn [s] (try
                                  (Long/parseLong s)
                                  (catch NumberFormatException _ nil)))
@@ -181,38 +178,50 @@
         logs (->> names
                   (map time-and-name)
                   (filterv (complement nil?)))]
-    logs))
+    (when (> (count logs) 1)
+      (throw (AssertionError. (str "Do not know which file to use: "
+                                   (str/join "," (map second logs))))))
+    (if (empty? logs)
+      [now (str (.toEpochMilli now) suffix)]
+      (first logs))))
+
 
 (defn transit-rolling-file-publisher
-  [{:keys [file-name rotate-age rotate-size transit-format transit-handlers transform]
-    :or {file-name "./app.log.json"
+  [{:keys [dir-name file-name rotate-age rotate-size transit-format transit-handlers transform]
+    :or {dir-name "."
+         file-name "app.log.json"
          rotate-age nil
          rotate-size nil
          transit-format :json
          transit-handlers nil
          transform identity}}]
 
-  {:pre [(-> (io/file file-name)
-             (.getParentFile)
+  {:pre [(-> (io/file dir-name)
              ((fn [^File f]
                 (and (.isDirectory f) (.canWrite f)))))]}
 
-  (let [rotate-opts (mapv (fn [[desc table]]
+  (let [log-dir  (io/file dir-name)
+        now (Instant/now)
+        rotate-opts (mapv (fn [[desc table]]
                             (when desc (descriptor->value desc table)))
                           [[rotate-age time-units] [rotate-size size-units]])
+        [created-at log-name] (parse-created-at file-name (.list log-dir) now)
+        log-file (let [f (File. log-dir log-name)]
+                   (if (and
+                        (.exists f)
+                        (rotate? f created-at now rotate-opts))
+                     (rotate f now file-name)
+                     f))
         transit-handlers (merge {Flake flake-write-handler}
                                 transit-handlers)
-        current-file (io/file file-name)
-        log-file (if (and
-                      (.exists current-file)
-                      (rotate? current-file (creation-time current-file)
-                               (Instant/now) rotate-opts))
-                   (rotate current-file)
-                   current-file)
         _ (println (str "Rotate opts ARE" rotate-opts))]
     (TransitRollingFilePublisher.
+     log-name
      (rb/agent-buffer 10000)
-     (atom (file-stream-writer-created log-file transit-format transit-handlers))
+     (atom (file-stream-writer-created log-file
+                                       transit-format
+                                       transit-handlers
+                                       created-at))
      (get-xf transform)
      rotate-opts
      transit-format
@@ -252,14 +261,12 @@
    (read-all-transit {:file-name "logz/app.log"}))
                    ; :transit-format :msgpack
 
-  (creation-time (io/file "logz/app.log"))
+
 
   (.list
    (.getParentFile (io/file "logz/app.log")))
 
-  (.getName (io/file "logz/app.log"))
-
-  )
+  (.getName (io/file "logz1/app.log")))
 
 
 

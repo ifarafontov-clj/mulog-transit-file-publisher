@@ -153,9 +153,11 @@
         (transit/write writer item))
       (.realFlush stream)
       (when (rotate? file created-at now rotate-opts)
+        (.close stream)
         (reset! fswc (file-stream-writer-created (rotate file now file-name)
                                                  transit-format
-                                                 transit-handlers)))
+                                                 transit-handlers
+                                                 now)))
       (rb/clear buffer)))
 
 
@@ -216,7 +218,7 @@
                                 transit-handlers)
         _ (println (str "Rotate opts ARE" rotate-opts))]
     (TransitRollingFilePublisher.
-     log-name
+     file-name
      (rb/agent-buffer 10000)
      (atom (file-stream-writer-created log-file
                                        transit-format
@@ -233,7 +235,10 @@
   (mu/start-publisher!
    {:type :custom
     :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
-    :file-name "logz/app.log"})
+    :dir-name "logz/"
+    ;:rotate-size {:mb 50}
+    :rotate-age {:minutes 5}
+    })
            ; :transit-format :msgpack
            ; :rotate-size {:mb 10}
 
@@ -258,7 +263,7 @@
                 :ex (str (* 10000000 1000000000))
                 :t (str (Instant/now))))))
   (count
-   (read-all-transit {:file-name "logz/app.log"}))
+   (read-all-transit {:file-name "logz/1603808240474_app.log.json"}))
                    ; :transit-format :msgpack
 
 

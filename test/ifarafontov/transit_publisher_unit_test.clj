@@ -1,4 +1,4 @@
-(ns ifarafontov.transit-publisher-test
+(ns ifarafontov.transit-publisher-unit-test
   (:require [clojure.test :refer :all]
             [ifarafontov.transit-publisher :as tp]
             [cognitect.transit :as transit]
@@ -89,26 +89,6 @@
               {:event :ms-db :exception (Throwable->map e)}]
              res)))))
 
-(deftest rotate-test
-  (testing "(rotate ..) renames current log file and creates a new one"
-    (let [now (Instant/now)
-          suffix "app.log.json"
-          dir (.toFile (Files/createTempDirectory "tptest-" (into-array FileAttribute [])))
-          file (File. dir (str (.toEpochMilli now) "_" suffix))
-          _ (spit file "it's all good, man!")
-          new-file (tp/rotate file now suffix)
-          _ (spit new-file "More good news")
-          _  (.deleteOnExit dir)
-          log-names (.list dir)
-          files-list (.listFiles dir)
-          expected-rotated-name (str suffix "." (tp/local-timestamp now))
-          expected-current-name (str (.toEpochMilli now) "_" suffix)]
-
-      (is (= 2 (count log-names)))
-      (is (= "More good news" (slurp (File. dir expected-current-name))))
-      (is (= "it's all good, man!" (slurp (File. dir expected-rotated-name))))
-
-      (map #(.deleteOnExit %) files-list))))
 
 (deftest flake-handlers-test
   (let [dest (ByteArrayOutputStream. 2048)

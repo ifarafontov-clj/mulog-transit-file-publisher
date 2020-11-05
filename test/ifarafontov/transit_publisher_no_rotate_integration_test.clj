@@ -1,13 +1,15 @@
 (ns ifarafontov.transit-publisher-no-rotate-integration-test
   (:require [clojure.test :refer :all]
             [ifarafontov.transit-publisher :as tp]
-            [ifarafontov.test-commons :refer [test-dir create-test-dir read-all-logs]]
+            [ifarafontov.test-commons :refer [test-dir
+                                              create-test-dir
+                                              read-all-logs
+                                              start-publisher]]
             [cognitect.transit :as transit]
             [com.brunobonacci.mulog :as mu]
             [clojure.java.io :as io])
   (:import [java.io File]
-           [java.time Instant]
-           ))
+           [java.time Instant]))
 
 
 (use-fixtures :each create-test-dir)
@@ -28,11 +30,7 @@
       (is (= "it's all good, man!" (slurp (File. @test-dir expected-rotated-name)))))))
 
 (deftest empty-folder-test
-  (let [_ (println (.getAbsolutePath @test-dir))
-        stop   (mu/start-publisher!
-                {:type :custom
-                 :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
-                 :dir-name (.getAbsolutePath @test-dir)})]
+  (let [stop   (start-publisher {})]
     (try
       (mu/log :hello :key "value")
       (Thread/sleep 1500)
@@ -45,16 +43,12 @@
         (stop)))))
 
 (deftest append-to-existing-test
-  (let [_ (println (.getAbsolutePath @test-dir))
-        fs (io/make-output-stream
+  (let [fs (io/make-output-stream
             (File. @test-dir (str (.toEpochMilli (Instant/now)) "_" "app.log.json")) {})
         _ (and (transit/write (transit/writer fs :json)
                               {:mulog/event-name :start :key "started"})
                (.close fs))
-        stop (mu/start-publisher!
-              {:type :custom
-               :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
-               :dir-name (.getAbsolutePath @test-dir)})]
+        stop (start-publisher {})]
     (try  (mu/log :continue :key "continued")
           (Thread/sleep 1500)
           (let [res (read-all-logs @test-dir)]
@@ -64,5 +58,3 @@
                    (mapv #(select-keys % [:mulog/event-name :key])
                          res))))
           (finally (stop)))))
-
-

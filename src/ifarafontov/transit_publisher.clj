@@ -104,8 +104,7 @@
    (map convert-throwables)))
 
 (defn read-all-transit [{:keys [file-name transit-format transit-handlers]
-                         :or {file-name "./app.log.json"
-                              transit-format :json
+                         :or {transit-format :json
                               transit-handlers nil}}]
 
   (with-open [^BufferedInputStream in (io/make-input-stream
@@ -215,8 +214,7 @@
                      (rotate f now file-name)
                      f))
         transit-handlers (merge {Flake flake-write-handler}
-                                transit-handlers)
-        _ (println (str "Rotate opts ARE" rotate-opts))]
+                                transit-handlers)]
     (TransitRollingFilePublisher.
      file-name
      (rb/agent-buffer 10000)
@@ -236,9 +234,7 @@
    {:type :custom
     :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
     :dir-name "logz/"
-    :rotate-size {:mb 1}
-    
-    })
+    :rotate-size {:mb 1}})
            ; :transit-format :msgpack
            ; :rotate-size {:mb 10}
 

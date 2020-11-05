@@ -1,6 +1,7 @@
 (ns ifarafontov.test-commons
   (:require
-   [ifarafontov.transit-publisher :as tp])
+   [ifarafontov.transit-publisher :as tp]
+   [com.brunobonacci.mulog :as mu])
   (:import
    [java.nio.file Files]
    [java.nio.file.attribute FileAttribute]))
@@ -28,3 +29,11 @@
        (sort)
        (map #(tp/read-all-transit {:file-name %}))
        (apply concat)))
+
+(defn start-publisher [args-map]
+  (mu/start-publisher!
+   (merge 
+    {:type :custom
+     :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
+     :dir-name (.getAbsolutePath @test-dir)}
+    args-map)))

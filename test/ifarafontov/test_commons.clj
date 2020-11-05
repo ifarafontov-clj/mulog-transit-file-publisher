@@ -1,12 +1,17 @@
 (ns ifarafontov.test-commons
   (:require
    [ifarafontov.transit-publisher :as tp]
-   [com.brunobonacci.mulog :as mu])
+   [com.brunobonacci.mulog :as mu]
+   [cognitect.transit :as transit])
   (:import
    [java.nio.file Files]
+   [java.time Instant]
    [java.nio.file.attribute FileAttribute]))
 
 (def test-dir (atom nil))
+
+(def inst-write-handler (transit/write-handler "inst" #(.toEpochMilli %)))
+(def inst-read-handler (transit/read-handler #(Instant/ofEpochMilli %)))
 
 (defn delete-dir
   [f]
@@ -27,7 +32,8 @@
        (.listFiles)
        (map  #(.getAbsolutePath %))
        (sort)
-       (map #(tp/read-all-transit {:file-name %}))
+       (map #(tp/read-all-transit {:file-name %
+                                   :transit-handlers {"inst" inst-read-handler}}))
        (apply concat)))
 
 (defn start-publisher [args-map]

@@ -4,7 +4,8 @@
             [ifarafontov.test-commons :refer [test-dir
                                               create-test-dir
                                               read-all-logs
-                                              start-publisher]]
+                                              start-publisher
+                                              inst-write-handler]]
             [cognitect.transit :as transit]
             [com.brunobonacci.mulog :as mu]
             [clojure.java.io :as io])
@@ -30,14 +31,16 @@
       (is (= "it's all good, man!" (slurp (File. @test-dir expected-rotated-name)))))))
 
 (deftest empty-folder-test
-  (let [stop   (start-publisher {})]
+  (let [stop   (start-publisher {:transit-handlers
+                                 {Instant inst-write-handler}})
+        now (Instant/ofEpochMilli (.toEpochMilli (Instant/now)))]
     (try
-      (mu/log :hello :key "value")
+      (mu/log :hello :key "value" :inst now)
       (Thread/sleep 1500)
       (let [res (read-all-logs @test-dir)]
         (is (= 1 (count (.list @test-dir))))
-        (is (= [{:mulog/event-name :hello :key "value"}]
-               (mapv #(select-keys % [:mulog/event-name :key])
+        (is (= [{:mulog/event-name :hello :key "value" :inst now}]
+               (mapv #(select-keys % [:mulog/event-name :key :inst])
                      res))))
       (finally
         (stop)))))

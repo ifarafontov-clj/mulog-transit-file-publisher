@@ -234,7 +234,8 @@
    {:type :custom
     :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
     :dir-name "logz/"
-    :rotate-size {:mb 1}})
+    :rotate-size {:mb 10}
+    :transit-format :msgpack})
            ; :transit-format :msgpack
            ; :rotate-size {:mb 10}
 

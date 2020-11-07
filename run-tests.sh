@@ -1,5 +1,5 @@
 #!/bin/bash
-
+clj -e "(compile 'ifarafontov.NoopFlushOutputStream)" 
 declare -a TESTS=("ifarafontov.transit-publisher-unit-test"
                   "ifarafontov.transit-publisher-no-rotate-integration-test"
                   "ifarafontov.transit-publisher-rotate-age-integration-test"

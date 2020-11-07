@@ -6,5 +6,4 @@ jobs:
       - image: circleci/clojure:openjdk-11-tools-deps-1.10.0.442
     steps:
       - checkout
-      - run: clj -e "(compile 'ifarafontov.NoopFlushOutputStream)" 
       - run: ./run-tests.sh

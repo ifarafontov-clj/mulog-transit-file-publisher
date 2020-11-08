@@ -146,7 +146,6 @@
                   writer
                   created-at]} @fswc
           items (into [] xf (rb/items buffer))
-          _ (println "!! " (count items))
           now (Instant/now)]
       (doseq [item items]
         (transit/write writer item))
@@ -188,20 +187,21 @@
 
 
 (defn transit-rolling-file-publisher
-  [{:keys [dir-name file-name rotate-age rotate-size transit-format transit-handlers transform]
-    :or {dir-name "."
-         file-name "app.log.json"
+  [{:keys [file-path rotate-age rotate-size transit-format transit-handlers transform]
+    :or {file-path "./app.log.json"
          rotate-age nil
          rotate-size nil
          transit-format :json
          transit-handlers nil
          transform identity}}]
 
-  {:pre [(-> (io/file dir-name)
+  {:pre [(-> (io/file file-path)
+            (#(.getParentFile %))
              ((fn [^File f]
                 (and (.isDirectory f) (.canWrite f)))))]}
 
-  (let [log-dir  (io/file dir-name)
+  (let [[log-dir file-name] (-> (io/file file-path)
+                  (#(vector (.getParentFile %) (.getName %))))
         now (Instant/now)
         rotate-opts (mapv (fn [[desc table]]
                             (when desc (descriptor->value desc table)))

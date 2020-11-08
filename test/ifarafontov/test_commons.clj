@@ -41,5 +41,5 @@
    (merge 
     {:type :custom
      :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
-     :dir-name (.getAbsolutePath @test-dir)}
+     :file-path (str (.getAbsolutePath @test-dir) "/app.log.json")}
     args-map)))

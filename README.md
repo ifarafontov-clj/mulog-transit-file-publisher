@@ -26,7 +26,11 @@ Accepted arguments:
 | Key      |Default value |Description |
 | ---------|--------------|------------|
 | :file-path |"./app.log.json" |A path to logs directory, including file name. As there is no garanty in getting file's creation time on all filesystems (i.e. **ext4**) in Java - I decided to use file name for storing it. A **current** active log name will be formed as concatenation of: number of milliseconds from the epoch of 1970-01-01T00:00:00Z., an underscore character, and the file name (last element) from **:file-path** argument. Example: _1604991687740_log.json_ <br/> When the file will be rotated - it will be given a name consistiong of a file name from **file-path** element, a dot character, and a current **local** date presented as "YYYYMMdd_hhmmss" string. Example: _log.json.20201110_115350_ </br> |
-| Content Cell  | Content Cell  | |
+| :rotate-age  | nil (no rotation)  |A map with keyset #{:seconds, :minutes, :hours, :days, :weeks} and a positive integer values. Example: _{:seconds 2 :days 5}_ </br> In case of and unexpected key or a non positive integer value - will throw AssetionError|
+| :rotate-size  | nil (no rotation)  |A map with keyset #{:kb, :mb, :gb } and a positive integer values. Example: _{:kb 2 :gb 5}_ </br> In case of and unexpected key or a non positive integer value - will throw AssetionError|
+| :transit-format  | :json  |one of :json :json-verbose :msgpack. Check Transit documentation.|
+| :transit-handlers  | nil |A map of custom transit handlers. Check Transit documentation. Also see **empty-folder-test** in ifarafontov.transit-publisher-no-rotate-integration-test namespace|
+| :transform | identity |A user-defined function to be applied to log entries before writing to file. Receives a single log entry map. Can be used for mapping  and/or filtering. Return **nil** if you do not want to log a particular entry. Example: (do not log entries with **:dont-log** key) </br>``` #(when-not (:dont-log (set (keys %))) %)  ``` |
 
 Run the project directly:
 

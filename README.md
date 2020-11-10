@@ -1,7 +1,7 @@
 # mulog-transit-publisher
-Hello! Here is my take on rolling file publisher for and AWESOME mulog library (https://github.com/BrunoBonacci/mulog)
-It uses cognitec Transit formatter (https://github.com/cognitect/transit-clj) to store log entites as Clojure data.
-It supports log rotation based on maximum size or maximum age of a file.
+Hello! Here is my take on rolling file publisher for and AWESOME mulog library (https://github.com/BrunoBonacci/mulog) </br>
+It uses cognitec Transit formatter (https://github.com/cognitect/transit-clj) to store log entites as Clojure data.</br>
+It supports log rotation based on maximum size or maximum age of a file.</br>
 
 ## Installation
 

@@ -2,9 +2,7 @@
   (:gen-class
    :extends java.io.BufferedOutputStream
    :methods [[realFlush [] void]]
-   :exposes-methods {flush superFlush})
-  (:import
-   [java.io BufferedOutputStream]))
+   :exposes-methods {flush superFlush}))
 
 ;; The sole purpose of this class is to make flush() call a no-op
 ;; because Transit writer calls flush() after each write(), 

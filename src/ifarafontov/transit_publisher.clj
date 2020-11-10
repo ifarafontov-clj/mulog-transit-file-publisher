@@ -14,7 +14,7 @@
    [com.brunobonacci.mulog.core Flake]
    [java.io File FileOutputStream BufferedInputStream EOFException]))
 
-(set! *warn-on-reflection* true)
+;(set! *warn-on-reflection* true)
 
 (def formatter (DateTimeFormatter/ofPattern "YYYYMMdd_hhmmss"))
 (defn local-timestamp [now]
@@ -79,7 +79,7 @@
                                {:handlers transit-handlers})]
     (FSWC. file stream writer created-at)))
 
-(defn rotate [^File file now file-name]
+(defn rotate [^File file ^Instant now file-name]
   (let [path (.toPath file)]
     (Files/move path (.resolveSibling path
                                       (str file-name "." (local-timestamp now)))
@@ -165,7 +165,7 @@
       (.realFlush stream)
       (.close stream))))
 
-(defn parse-created-at [file-name names now]
+(defn parse-created-at [file-name names ^Instant now]
   (let [try-parse-long (fn [s] (try
                                  (Long/parseLong s)
                                  (catch NumberFormatException _ nil)))
@@ -233,9 +233,9 @@
   (mu/start-publisher!
    {:type :custom
     :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
-    :dir-name "logz/"
+    :file-path "logz/log.json"
     :rotate-size {:mb 10}
-    :transit-format :msgpack})
+    })
            ; :transit-format :msgpack
            ; :rotate-size {:mb 10}
 
@@ -257,10 +257,13 @@
         (Thread/sleep 1)
         (mu/log :start
                 :key n
-                :ex (str (* 10000000 1000000000))
+                :ex e
                 :t (str (Instant/now))))))
-  (count
-   (read-all-transit {:file-name "logz/1603808240474_app.log.json"}))
+  (last
+   (read-all-transit {:file-name "logz/1604991687740_log.json"
+                      }))
+  
+  
                    ; :transit-format :msgpack
 
 

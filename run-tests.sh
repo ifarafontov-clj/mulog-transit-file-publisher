@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 mkdir -p classes
 clojure -e "(compile 'ifarafontov.NoopFlushOutputStream)" 
 declare -a TESTS=("ifarafontov.transit-publisher-unit-test"

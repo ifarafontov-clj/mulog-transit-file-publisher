@@ -32,41 +32,13 @@ Accepted arguments:
 | :transit-handlers  | nil |A map of custom transit handlers. Check Transit documentation. Also see **empty-folder-test** in ifarafontov.transit-publisher-no-rotate-integration-test namespace|
 | :transform | identity |A user-defined function to be applied to log records before writing to file. Receives a single log entry map. Can be used for mapping  and/or filtering. Return **nil** if you do not want to log a particular record. Example: (do not log records with **:dont-log** key) </br>``` #(when-not (:dont-log (set (keys %))) %)  ``` |
 
-Run the project directly:
+## Notes:
+* Throwables will be converted to maps via Throwable->Map </br>
+* Transform function will be applied **before** converting Throwables - so you can provide custom conversion if needed
+* There is a handy method **read-all-transit** that can be used for reading log files in **ifarafontov.transit-publisher** namespace. It expects **file-name**,
+**transit-fromat** and **transit-handlers** (check arguments description in the table above).
 
-    $ clojure -m ifarafontov.transit-publisher
-
-Run the project's tests (they'll fail until you edit them):
-
-    $ clojure -A:test:runner -M:runner
-
-Build an uberjar:
-
-    $ clojure -A:uberjar -M:uberjar
-
-Run that uberjar:
-
-    $ java -jar transit-publisher.jar
-
-## Options
-
-FIXME: listing of options this app accepts.
-
-## Examples
-
-...
-
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
-
-## License
-
-Copyright © 2020 Karhu
+Copyright © 2020 ifarafontov-clj
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.

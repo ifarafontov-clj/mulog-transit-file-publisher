@@ -183,7 +183,7 @@
       (first logs))))
 
 
-(defn transit-rolling-file-publisher
+(defn transit-file-publisher
   [{:keys [file-path rotate-age rotate-size transit-format transit-handlers transform]
     :or {file-path "./app.log.json"
          rotate-age nil
@@ -223,55 +223,3 @@
      rotate-opts
      transit-format
      transit-handlers)))
-
-(defn -main
-  [& args]
-
-  (mu/start-publisher!
-   {:type :custom
-    :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
-    :file-path "logz/log.json"
-    :rotate-size {:mb 10}
-    })
-           ; :transit-format :msgpack
-           ; :rotate-size {:mb 10}
-
-
-
-  (mu/start-publisher! {:type :console})
-
-  (mu/log :start
-          :key 1
-          :e :ev
-          :t (str (Instant/now)))
-
-
-
-;; 256MB
-  (future
-    (let [e (Exception. "Boom!")]
-      (dotimes [n 1000000]
-        (Thread/sleep 1)
-        (mu/log :start
-                :key n
-                :ex e
-                :t (str (Instant/now))))))
-  (last
-   (read-all-transit {:file-name "logz/1604991687740_log.json"
-                      }))
-  
-  
-                   ; :transit-format :msgpack
-
-
-
-  (.list
-   (.getParentFile (io/file "logz/app.log")))
-
-  (.getName (io/file "logz1/app.log")))
-
-
-
-
-
-

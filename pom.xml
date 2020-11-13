@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>ifarafontov</groupId>
+  <artifactId>transit-file-publisher</artifactId>
+  <version>0.1.0-alpha-1</version>
+  <name>transit-file-publisher</name>
+  <description>File publisher for Mulog library which uses cognitec Transit format to store log records as clojure data</description>
+  <dependencies>
+    <dependency>
+      <groupId>org.clojure</groupId>
+      <artifactId>clojure</artifactId>
+      <version>1.10.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.brunobonacci</groupId>
+      <artifactId>mulog</artifactId>
+      <version>0.5.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.cognitect</groupId>
+      <artifactId>transit-clj</artifactId>
+      <version>1.0.324</version>
+    </dependency>
+  </dependencies>
+  <build>
+    <sourceDirectory>src</sourceDirectory>
+  </build>
+  <repositories/>
+</project>

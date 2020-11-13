@@ -16,7 +16,7 @@ You can start the publisher using the following code:
 ```clojure
   (mu/start-publisher!
    {:type :custom
-    :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
+    :fqn-function "ifarafontov.transit-publisher/transit-file-publisher"
     :file-path "logz/log.json"
     :rotate-size {:mb 10}
     })

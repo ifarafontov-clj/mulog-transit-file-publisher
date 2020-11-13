@@ -40,6 +40,6 @@
   (mu/start-publisher!
    (merge 
     {:type :custom
-     :fqn-function "ifarafontov.transit-publisher/transit-rolling-file-publisher"
+     :fqn-function "ifarafontov.transit-publisher/transit-file-publisher"
      :file-path (str (.getAbsolutePath @test-dir) "/app.log.json")}
     args-map)))

@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [com.brunobonacci.mulog.buffer :as rb]
    [ifarafontov.NoopFlushOutputStream]
+   [com.brunobonacci.mulog :as mu]
    [clojure.string :as str])
   (:import
    [java.nio.file Files CopyOption]

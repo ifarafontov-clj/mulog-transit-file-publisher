@@ -62,9 +62,6 @@
   (reduce (fn [acc [unit v]] (+ acc (* (unit units-table) v)))
           0 (seq descriptor)))
 
-(defn make-output-stream [^File file]
-  (ifarafontov.NoopFlushOutputStream. (FileOutputStream. file true)))
-
 (defrecord FSWC [^File file
                  ^ifarafontov.NoopFlushOutputStream stream
                  ^cognitect.transit.Writer writer
@@ -73,7 +70,7 @@
 (defn file-stream-writer-created [^File file
                                   transit-format transit-handlers
                                   created-at]
-  (let [stream (make-output-stream file)
+  (let [stream (ifarafontov.NoopFlushOutputStream. (FileOutputStream. file true))
         writer (transit/writer stream
                                transit-format
                                {:handlers transit-handlers})]

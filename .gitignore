@@ -11,3 +11,6 @@
 .hg/
 /.calva
 /logz
+.classpath
+.project
+.settings/

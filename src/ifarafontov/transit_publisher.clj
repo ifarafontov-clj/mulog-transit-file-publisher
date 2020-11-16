@@ -100,9 +100,13 @@
    (filter (complement nil?))
    (map convert-throwables)))
 
-(defn read-all-transit [{:keys [file-name transit-format transit-handlers]
+(defn read-all-transit [{:keys [file-name
+                                transit-format
+                                transit-handlers
+                                transform]
                          :or {transit-format :json
-                              transit-handlers nil}}]
+                              transit-handlers nil
+                              transform identity}}]
 
   (with-open [^BufferedInputStream in (io/make-input-stream
                                        (io/file file-name) {})]
@@ -111,13 +115,14 @@
                   transit-format
                   {:handlers (merge {"flake" flake-read-handler} transit-handlers)})]
       (loop [res []]
-        (if-let [entry (try
-                         (transit/read reader)
+        (if-let [entry (some-> (try
+                             (transit/read reader)
                          ;;Both :json and :msgpack throw EOF
-                         (catch RuntimeException re
-                           (if (instance? EOFException (.getCause re))
-                             nil
-                             (throw re))))]
+                             (catch RuntimeException re
+                               (if (instance? EOFException (.getCause re))
+                                 nil
+                                 (throw re))))
+                           (#(transform %)))]
           (recur (conj res entry))
           res)))))
 
@@ -193,12 +198,12 @@
          transform identity}}]
 
   {:pre [(-> (io/file file-path)
-            (#(.getParentFile %))
+             (.getParentFile)
              ((fn [^File f]
                 (and (.isDirectory f) (.canWrite f)))))]}
 
   (let [[log-dir file-name] (-> (io/file file-path)
-                  (#(vector (.getParentFile %) (.getName %))))
+                                (#(vector (.getParentFile %) (.getName %))))
         now (Instant/now)
         rotate-opts (mapv (fn [[desc table]]
                             (when desc (descriptor->value desc table)))

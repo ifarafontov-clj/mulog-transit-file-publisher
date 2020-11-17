@@ -5,9 +5,7 @@ It supports log rotation based on maximum size or maximum age of a file.</br>
 
 ## Installation
 
-clj -e "(compile 'ifarafontov.NoopFlushOutputStream)"
-
-Download from https://github.com/ifarafontov/transit-publisher.
+[![Clojars Project](https://img.shields.io/clojars/v/ifarafontov/transit-file-publisher.svg)](https://clojars.org/ifarafontov/transit-file-publisher)
 
 ## Usage
 

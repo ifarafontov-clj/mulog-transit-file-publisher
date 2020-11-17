@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>ifarafontov</groupId>
   <artifactId>transit-file-publisher</artifactId>
-  <version>0.1.0-alpha-1</version>
+  <version>0.0.1</version>
   <name>transit-file-publisher</name>
   <description>File publisher for Mulog library which uses cognitec Transit format to store log records as clojure data</description>
   <dependencies>
@@ -27,4 +27,11 @@
     <sourceDirectory>src</sourceDirectory>
   </build>
   <repositories/>
+  <distributionManagement>
+  <repository>
+    <id>clojars</id>
+    <name>Clojars repository</name>
+    <url>https://clojars.org/repo</url>
+  </repository>
+</distributionManagement>
 </project>
